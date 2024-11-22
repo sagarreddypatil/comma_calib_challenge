@@ -4,6 +4,7 @@ from math import isinf
 from functools import cache
 
 import cv2
+import tqdm
 import numpy as np
 
 import torch
@@ -39,6 +40,7 @@ assert (num_chunks(32, 8, 4)) == 7
 
 @cache
 def load_video(path: str):
+    print(f"loading {path}")
     assert os.path.exists(path)
 
     # if not os.path.exists("cache"):
@@ -51,6 +53,9 @@ def load_video(path: str):
     frames = []
     cap = cv2.VideoCapture(path)
 
+    bar = tqdm.tqdm(total=20 * 60)
+    i = 0
+
     while cap.isOpened():
         ret, frame = cap.read()
 
@@ -60,8 +65,14 @@ def load_video(path: str):
         frame = frame.astype("float32")
         frame /= 255.0
 
-        frame = cv2.resize(frame, (640, 480))
+        # frame = cv2.resize(frame, (640, 480))
+        frame = cv2.resize(frame, (120, 90))
         frames.append(frame)
+
+        i += 1
+        bar.update(1)
+
+    bar.close()
 
     frames = np.array(frames)
     # np.save(cache_path, frames)
@@ -129,6 +140,7 @@ class CommaDataset(Dataset):
                     if len(section) > self.chunk_size:
                         clip_sections.append(section)
                     section = []
+                    continue
 
                 section.append(pt)
 
@@ -153,6 +165,7 @@ class CommaDataset(Dataset):
     def __len__(self):
         return sum(self.section_chunk_counts)
 
+    @cache
     def __getitem__(self, i):
         section_idx = 0
 
@@ -183,9 +196,22 @@ class CommaDataset(Dataset):
                 out_frames.append(self.transform(frame))
 
         frames = torch.stack(out_frames)
+        return frames, labels
 
-        sample = {"frames": frames, "labels": labels}
-        return sample
+class DummyCommaDataset(Dataset):
+    def __init__(self, length: int, chunk_size: int=8):
+        assert length > 0
+        assert length >= chunk_size
+        assert chunk_size > 0
+
+        self.n = length
+        self.chunk_size = chunk_size
+
+    def __len__(self):
+        return self.n
+
+    def __getitem__(self, i):
+        return torch.zeros((self.chunk_size, 3, 120, 90)), torch.zeros((self.chunk_size, 2))
 
 
 if __name__ == "__main__":
@@ -198,5 +224,5 @@ if __name__ == "__main__":
 
     dataset = CommaDataset("./labeled", transform=transform)
     sample = dataset[0]
-    print(sample["frames"].shape)
-    print(sample["labels"].shape)
+    print(sample[0].shape)
+    print(sample[1].shape)

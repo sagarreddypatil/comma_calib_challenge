@@ -14,7 +14,8 @@ class ModelConfig:
     n_layer: int = 4
     n_head: int = 8
     dim: int = 512
-    dropout: float = 0.25
+    # dropout: float = 0.25
+    dropout: float = 0 # dropout unsupported on MPS
     bias: bool = False
 
 
