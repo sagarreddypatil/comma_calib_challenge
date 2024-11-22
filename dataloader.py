@@ -1,7 +1,7 @@
 import os
 import glob
 from math import isinf
-from functools import cache
+from hashlib import md5
 
 import cv2
 import tqdm
@@ -38,19 +38,19 @@ assert (num_chunks(10, 5, 0)) == 2
 assert (num_chunks(32, 8, 4)) == 7
 
 
-@cache
 def load_video(path: str):
-    print(f"loading {path}")
     assert os.path.exists(path)
 
-    # if not os.path.exists("cache"):
-    #     os.mkdir("cache")
+    if not os.path.exists("cache"):
+        os.mkdir("cache")
 
-    # cache_path = f"cache/{os.path.basename(path)}.npy"
-    # if os.path.exists(cache_path):
-    #     return np.load(cache_path)
+    cache_name = md5(os.path.abspath(path).encode("utf-8")).hexdigest()
+    cache_path = f"cache/{cache_name}"
+    if os.path.exists(cache_path):
+        return cache_path
+    else:
+        os.mkdir(cache_path)
 
-    frames = []
     cap = cv2.VideoCapture(path)
 
     bar = tqdm.tqdm(total=20 * 60)
@@ -62,22 +62,26 @@ def load_video(path: str):
         if not ret:
             break
 
-        frame = frame.astype("float32")
-        frame /= 255.0
+        # frame = frame.astype("float32")
+        # frame /= 255.0
 
         # frame = cv2.resize(frame, (640, 480))
         frame = cv2.resize(frame, (120, 90))
-        frames.append(frame)
+        cv2.imwrite(f"{cache_path}/{i}.jpg", frame)
 
         i += 1
         bar.update(1)
 
     bar.close()
+    return cache_path
 
-    frames = np.array(frames)
-    # np.save(cache_path, frames)
 
-    return frames
+def load_cached(path: str):
+    img = cv2.imread(path)
+    img = img.astype("float32")
+    img /= 255
+
+    return img
 
 
 def load_clip(path: str, start_frame: int, n_frames: int):
@@ -85,7 +89,12 @@ def load_clip(path: str, start_frame: int, n_frames: int):
     assert start_frame >= 0
 
     assert os.path.exists(path)
-    frames = load_video(path)[start_frame : start_frame + n_frames]
+    frames_dir = load_video(path)
+
+    frames = [
+        f"{frames_dir}/{i}.jpg" for i in range(start_frame, start_frame + n_frames)
+    ]
+    frames = list(map(load_cached, frames))
 
     # for frame in frames:
     #     cv2.imshow("frame", frame)
@@ -165,7 +174,6 @@ class CommaDataset(Dataset):
     def __len__(self):
         return sum(self.section_chunk_counts)
 
-    @cache
     def __getitem__(self, i):
         section_idx = 0
 
@@ -198,8 +206,9 @@ class CommaDataset(Dataset):
         frames = torch.stack(out_frames)
         return frames, labels
 
+
 class DummyCommaDataset(Dataset):
-    def __init__(self, length: int, chunk_size: int=8):
+    def __init__(self, length: int, chunk_size: int = 8):
         assert length > 0
         assert length >= chunk_size
         assert chunk_size > 0
@@ -211,16 +220,20 @@ class DummyCommaDataset(Dataset):
         return self.n
 
     def __getitem__(self, i):
-        return torch.zeros((self.chunk_size, 3, 120, 90)), torch.zeros((self.chunk_size, 2))
+        return torch.zeros((self.chunk_size, 3, 120, 90)), torch.zeros(
+            (self.chunk_size, 2)
+        )
 
 
 if __name__ == "__main__":
     from torchvision import transforms
 
-    transform = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Resize((120, 90)),
-    ])
+    transform = transforms.Compose(
+        [
+            transforms.ToTensor(),
+            transforms.Resize((120, 90)),
+        ]
+    )
 
     dataset = CommaDataset("./labeled", transform=transform)
     sample = dataset[0]
