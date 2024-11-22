@@ -41,9 +41,9 @@ def video():
             break
 
         frame = cv2.resize(frame, (120, 90))
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        # frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-        frame = cv2.resize(frame, (640, 480))
+        # frame = cv2.resize(frame, (640, 480))
 
         labels_till_now = labels[:i + 1]
         yaws = [frame[1] for frame in labels_till_now]

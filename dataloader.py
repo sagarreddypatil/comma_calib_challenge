@@ -59,9 +59,8 @@ def load_video(path: str):
 
         frame = frame.astype("float32")
         frame /= 255.0
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        frame = cv2.resize(frame, (640, 480))
 
+        frame = cv2.resize(frame, (640, 480))
         frames.append(frame)
 
     frames = np.array(frames)
@@ -198,3 +197,6 @@ if __name__ == "__main__":
     ])
 
     dataset = CommaDataset("./labeled", transform=transform)
+    sample = dataset[0]
+    print(sample["frames"].shape)
+    print(sample["labels"].shape)
