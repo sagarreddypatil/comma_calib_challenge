@@ -4,6 +4,7 @@ from model import CalibrationModel, ModelConfig
 import torch
 from torch.optim.adam import Adam
 from torch.utils.data import DataLoader
+from torch.utils.tensorboard import SummaryWriter
 from torchvision import transforms
 import os
 import random
@@ -56,8 +57,8 @@ def train_step(
     for images, labels in pbar:
         images, labels = images.to(device), labels.to(device)
 
-        pred = model(images)
-        loss: torch.Tensor = loss_fn(pred, labels)
+        means, logvars = model(images)
+        loss = model.loss(means, logvars, labels)
 
         assert not torch.isnan(loss)
 
@@ -88,7 +89,7 @@ def val_step(model: torch.nn.Module, loss_fn: torch.nn.Module, loader: DataLoade
         for images, labels in pbar:
             images, labels = images.to(device), labels.to(device)
 
-            pred = model(images)
+            pred, _ = model(images)
             loss: torch.Tensor = loss_fn(pred, labels)
 
             assert not torch.isnan(loss)
@@ -138,7 +139,7 @@ dataset = CommaDataset("./labeled", chunk_size=8, overlap_size=0, transform=tran
 # Use a fixed generator for reproducible train/val split
 generator = torch.Generator().manual_seed(42)
 train_set, val_set = torch.utils.data.random_split(
-    dataset, [0.8, 0.2], generator=generator
+    dataset, [0.5, 0.5], generator=generator
 )
 
 train_loader = DataLoader(
@@ -157,12 +158,16 @@ best_checkpoint_path = "model_best.pth.tar"
 
 # Load checkpoint if exists
 start_epoch, best_val_loss = load_checkpoint(checkpoint_path, model, optim)
+writer = SummaryWriter()
 
 for epoch in range(start_epoch, start_epoch + epochs):
     print(f"epoch: {epoch}")
 
     train_loss = train_step(model, loss_fn, optim, train_loader)
     val_loss = val_step(model, loss_fn, val_loader)
+
+    writer.add_scalar("train_loss", train_loss, epoch)
+    writer.add_scalar("val_loss", val_loss, epoch)
 
     # Save regular checkpoint
     checkpoint = {

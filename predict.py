@@ -31,7 +31,7 @@ print(f"device: {device}", file=sys.stderr)
 
 checkpoint = torch.load("model_best.pth.tar", weights_only=True)
 
-model = CalibrationModel(config=ModelConfig)
+model: CalibrationModel = CalibrationModel(config=ModelConfig)
 model.to(device)
 
 if torch.mps.is_available():
@@ -48,14 +48,16 @@ for frame in load_clip(video_path, 0, None):
     frame = transform(frame)
     frame = frame.unsqueeze(0).to(device)
 
-    frame_embed = model.image_backbone(frame)[0]
+    with torch.no_grad():
+        frame_embed = model.forward_backbone(frame)[0]
+
     context_window.append(frame_embed)
 
     context_window_tensor = torch.stack(list(context_window))
     context_window_tensor = context_window_tensor.unsqueeze(0)
 
     with torch.no_grad():
-        prediction = model.head(model.transformer(context_window_tensor))
+        prediction = model.forward_transformer(context_window_tensor)
 
     prediction = prediction.squeeze(0)[-1].cpu().numpy()
     print(f"{prediction[0]} {prediction[1]}")
