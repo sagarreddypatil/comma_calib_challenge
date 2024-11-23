@@ -1,39 +1,13 @@
+import tqdm
+
 from dataloader import CommaDataset, DummyCommaDataset
 from model import CalibrationModel, ModelConfig
-
-import tqdm
 
 import torch
 from torch.optim.adam import Adam
 
 from torch.utils.data import DataLoader
 from torchvision import transforms
-
-transform = transforms.Compose(
-    [
-        transforms.ToTensor(),
-        transforms.Resize((120, 90)),
-    ]
-)
-
-device = torch.device("cpu")
-if torch.cuda.is_available():
-    device = torch.device("cuda")
-elif torch.mps.is_available():
-    device = torch.device("mps")
-
-print(f"device: {device}")
-
-model = CalibrationModel(config=ModelConfig)
-
-if torch.mps.is_available():
-    model = torch.compile(model, backend="aot_eager")
-else:
-    model = torch.compile(model)
-model.to(device)
-
-optim = Adam(model.parameters(), lr=1e-4)
-loss_fn = torch.nn.MSELoss()
 
 
 def train_step(
@@ -42,6 +16,7 @@ def train_step(
     optim: torch.optim.Optimizer,
     loader: DataLoader,
 ):
+    model.train()
     pbar = tqdm.tqdm(loader)
 
     total_loss = 0
@@ -70,8 +45,9 @@ def train_step(
     return avg_loss
 
 
-
 def val_step(model: torch.nn.Module, loss_fn: torch.nn.Module, loader: DataLoader):
+    model.eval()
+
     total_loss = 0.0
     count = 0
 
@@ -94,29 +70,49 @@ def val_step(model: torch.nn.Module, loss_fn: torch.nn.Module, loader: DataLoade
 
     return avg_loss
 
+
+device = torch.device("cpu")
+if torch.cuda.is_available():
+    device = torch.device("cuda")
+elif torch.mps.is_available():
+    device = torch.device("mps")
+
+print(f"device: {device}")
+
+base_model = CalibrationModel(config=ModelConfig).to(device)
+optim = Adam(base_model.parameters(), lr=1e-4)
+start_epoch = 0
+
+
+if torch.mps.is_available():
+    model = torch.compile(base_model, backend="aot_eager")
+else:
+    model = torch.compile(base_model)
+
+loss_fn = torch.nn.MSELoss()
+
+
+transform = transforms.Compose(
+    [
+        transforms.ToTensor(),
+        transforms.Resize((120, 90)),
+    ]
+)
+
 dataset = CommaDataset("./labeled", chunk_size=8, overlap_size=0, transform=transform)
 # data = DummyCommaDataset(length=613, chunk_size=8)
-generator = torch.Generator().manual_seed(42)
 
-train_set, val_set = torch.utils.data.random_split(
-    dataset, [0.8, 0.2], generator=generator
-)
+train_set, val_set = torch.utils.data.random_split(dataset, [0.8, 0.2])
 
 train_loader = DataLoader(train_set, batch_size=64, shuffle=True)
 val_loader = DataLoader(val_set, batch_size=64, shuffle=True)
 
 epochs = 100
 
-prev_val_loss = 9999.0
+prev_val_loss = val_step(model, loss_fn, val_loader)
 
-for epoch in range(epochs):
+for epoch in range(start_epoch, start_epoch + epochs):
     print(f"epoch: {epoch}")
 
     train_loss = train_step(model, loss_fn, optim, train_loader)
     val_loss = val_step(model, loss_fn, val_loader)
-
-    if val_loss < prev_val_loss:
-        print("saving checkpoint")
-        torch.save(model, 
-
-
