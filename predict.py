@@ -44,7 +44,7 @@ model.eval()
 
 context_window = deque(maxlen=8)  # context size of 8 frames
 
-for frame in load_clip(video_path, 0, 1196):
+for frame in load_clip(video_path, 0, None):
     frame = transform(frame)
     frame = frame.unsqueeze(0).to(device)
 

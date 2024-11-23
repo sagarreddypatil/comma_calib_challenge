@@ -87,12 +87,15 @@ def load_cached(path: str):
     return img
 
 
-def load_clip(path: str, start_frame: int, n_frames: int):
-    assert n_frames > 0
+def load_clip(path: str, start_frame: int, n_frames: int | None):
+    assert n_frames is None or n_frames > 0
     assert start_frame >= 0
 
     assert os.path.exists(path)
     frames_dir = load_video(path)
+
+    if n_frames is None:
+        n_frames = len(glob.glob(f"{frames_dir}/*.jpg"))
 
     frames = [
         f"{frames_dir}/{i}.jpg" for i in range(start_frame, start_frame + n_frames)
