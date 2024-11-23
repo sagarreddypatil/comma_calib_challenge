@@ -77,6 +77,9 @@ def load_video(path: str):
 
 
 def load_cached(path: str):
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"file {path} not found")
+
     img = cv2.imread(path)
     img = img.astype("float32")
     img /= 255
