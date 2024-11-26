@@ -13,7 +13,7 @@ class ModelConfig:
     block_size: int = 128
     n_layer: int = 12
     n_head: int = 8
-    dim: int = 256
+    dim: int = 128
     # dropout: float = 0.25
     dropout: float = 0  # dropout unsupported on MPS
     bias: bool = False

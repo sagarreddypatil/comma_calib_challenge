@@ -134,10 +134,10 @@ transform = transforms.Compose(
 )
 
 train_dataset = CommaDataset(
-    "./labeled", indices=[0, 3, 4], chunk_size=4, overlap_size=0, transform=transform
+    "./labeled", indices=[1, 2, 3], chunk_size=4, overlap_size=0, transform=transform
 )
 val_dataset = CommaDataset(
-    "./labeled", indices=[1, 2], chunk_size=4, overlap_size=0, transform=transform
+    "./labeled", indices=[0, 4], chunk_size=4, overlap_size=0, transform=transform
 )
 
 train_loader = DataLoader(
