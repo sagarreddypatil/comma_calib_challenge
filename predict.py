@@ -29,7 +29,7 @@ elif torch.mps.is_available():
 
 print(f"device: {device}", file=sys.stderr)
 
-checkpoint = torch.load("model_best.pth.tar", weights_only=True)
+checkpoint = torch.load("model_best.pth", weights_only=True)
 
 model: CalibrationModel = CalibrationModel(config=ModelConfig)
 model.to(device)

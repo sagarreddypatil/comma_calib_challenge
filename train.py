@@ -22,7 +22,7 @@ def set_seed(seed=42):
     torch.backends.cudnn.benchmark = False
 
 
-def save_checkpoint(state, filename="checkpoint.pth.tar"):
+def save_checkpoint(state, filename="checkpoint.pth"):
     """Save checkpoint to disk."""
     print(f"Saving checkpoint to {filename}")
     torch.save(state, filename)
@@ -95,7 +95,7 @@ def val_step(model: torch.nn.Module, loss_fn: torch.nn.Module, loader: DataLoade
             assert not torch.isnan(loss)
             loss_num = float(loss.detach().cpu().numpy())
 
-            total_loss += loss_num
+            total_loss += (loss_num * 1000)
             count += 1
 
             avg_loss = total_loss / count
@@ -133,28 +133,26 @@ transform = transforms.Compose(
     ]
 )
 
-dataset = CommaDataset("./labeled", chunk_size=8, overlap_size=0, transform=transform)
-# data = DummyCommaDataset(length=613, chunk_size=8)
-
-# Use a fixed generator for reproducible train/val split
-generator = torch.Generator().manual_seed(42)
-train_set, val_set = torch.utils.data.random_split(
-    dataset, [0.5, 0.5], generator=generator
+train_dataset = CommaDataset(
+    "./labeled", indices=[0, 3, 4], chunk_size=4, overlap_size=0, transform=transform
+)
+val_dataset = CommaDataset(
+    "./labeled", indices=[1, 2], chunk_size=4, overlap_size=0, transform=transform
 )
 
 train_loader = DataLoader(
-    train_set,
+    train_dataset,
     batch_size=64,
     shuffle=True,
     worker_init_fn=lambda worker_id: np.random.seed(42 + worker_id),
 )
 val_loader = DataLoader(
-    val_set, batch_size=64, shuffle=False
+    val_dataset, batch_size=64, shuffle=False
 )  # No need to shuffle validation set
 
-epochs = 100
-checkpoint_path = "model_checkpoint.pth.tar"
-best_checkpoint_path = "model_best.pth.tar"
+epochs = 10000
+checkpoint_path = "model_checkpoint.pth"
+best_checkpoint_path = "model_best.pth"
 
 # Load checkpoint if exists
 start_epoch, best_val_loss = load_checkpoint(checkpoint_path, model, optim)

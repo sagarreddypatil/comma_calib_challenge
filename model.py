@@ -11,9 +11,9 @@ from torchvision.models import regnet_x_400mf, RegNet_X_400MF_Weights
 @dataclass
 class ModelConfig:
     block_size: int = 128
-    n_layer: int = 8
+    n_layer: int = 12
     n_head: int = 8
-    dim: int = 128
+    dim: int = 256
     # dropout: float = 0.25
     dropout: float = 0  # dropout unsupported on MPS
     bias: bool = False

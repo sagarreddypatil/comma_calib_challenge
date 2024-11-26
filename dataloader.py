@@ -112,7 +112,7 @@ def load_clip(path: str, start_frame: int, n_frames: int | None):
 
 class CommaDataset(Dataset):
     def __init__(
-        self, dir: str, chunk_size: int = 8, overlap_size: int = 0, transform=None
+        self, dir: str, indices: list[int], chunk_size: int = 8, overlap_size: int = 0, transform=None
     ):
         assert chunk_size > 0
         assert overlap_size >= 0
@@ -131,6 +131,9 @@ class CommaDataset(Dataset):
 
         for fn in label_files:
             clipno = int(os.path.basename(fn).split(".")[0])
+            if clipno not in indices:
+                continue
+
             f = open(fn, "r")
 
             points = f.readlines()

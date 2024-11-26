@@ -6,3 +6,4 @@ cache/
 *.tar
 predictions/
 runs/
+all_vids/
